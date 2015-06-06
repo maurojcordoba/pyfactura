@@ -67,6 +67,7 @@ def on_nro_doc_change(evt):
     if doc_nro:
         doc_nro = doc_nro.replace("-", "")
         statusbar.text = 'Consultando Padron...'  
+        wx.BeginBusyCursor()
         # si es cuit busca con el API de AFIP
         if tipo_doc == 80:
             padron.Consultar(doc_nro)
@@ -103,6 +104,7 @@ def on_nro_doc_change(evt):
         panel['cliente']['email'].value = ""
     panel['cliente']['cat_iva'].value = cat_iva
     statusbar.text = ''
+    wx.EndBusyCursor()
 
 def on_cat_iva_change(evt):
     ctrl = evt.target
@@ -124,8 +126,10 @@ def on_tipo_cbte_change(evt):
         tipo_cbte = panel['tipo_cbte'].value
         pto_vta = panel['pto_vta'].value = pto_vta_emisor         
         if tipo_cbte and pto_vta:
+            wx.BeginBusyCursor()
             statusbar.text = 'Consultando Ultimo Comprobante Autorizado...'
             nro_cbte = wsfev1.CompUltimoAutorizado(tipo_cbte, pto_vta)
+            wx.EndBusyCursor()
             print wsfev1.Excepcion, wsfev1.ErrMsg            
         else:
             nro_cbte = -1
@@ -491,6 +495,7 @@ def grabar(evt):
         crear_factura(rg1361, imprimir=False)
         id_factura = rg1361.GuardarFactura()
         habilitar(False)
+        gui.alert(u'Grabado con éxito','Grabar',icon="info")
 
 def cargar(evt):
     if not gui.confirm(u"¿Se restableceran todos los campos?", u"Cargar última factura"):
