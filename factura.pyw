@@ -66,33 +66,37 @@ def on_nro_doc_change(evt):
     cat_iva = None
     if doc_nro:
         doc_nro = doc_nro.replace("-", "")
-        statusbar.text = 'Consultando Padron...'
-        if padron.Buscar(doc_nro, tipo_doc):
-            panel['cliente']['nombre'].value = padron.denominacion
-            panel['cliente']['domicilio'].value = ""
-            try:
-                cat_iva = int(padron.cat_iva)
-            except ValueError:
-                cat_iva = None
-            if cat_iva:
-                pass
-            elif padron.imp_iva in ('AC', 'S'):
-                cat_iva = 1  # RI
-            elif padron.imp_iva == 'EX':
-                cat_iva = 4  # EX
-            elif padron.monotributo:
-                cat_iva = 6  # MT
-            else:
-                cat_iva = 5  # CF
-            padron.ConsultarDomicilios(doc_nro, tipo_doc)
-            # tomar el primer domicilio o consultar con la API de AFIP:
-            for domicilio in padron.domicilios:
-                panel['cliente']['domicilio'].value = domicilio
-                break
-            else:
-                if doc_nro and padron.Consultar(doc_nro) and padron.domicilios:
-                    panel['cliente']['domicilio'].value = padron.domicilios[0]
-            panel['cliente']['email'].value = padron.email or ""
+        statusbar.text = 'Consultando Padron...'  
+        # si es cuit busca con el API de AFIP
+        if tipo_doc == 80:
+            padron.Consultar(doc_nro)
+        else:
+            padron.Buscar(doc_nro, tipo_doc)
+        panel['cliente']['nombre'].value = padron.denominacion
+        panel['cliente']['domicilio'].value = ""
+        try:
+            cat_iva = int(padron.cat_iva)
+        except ValueError:
+            cat_iva = None
+        if cat_iva:
+            pass
+        elif padron.imp_iva in ('AC', 'S'):
+            cat_iva = 1  # RI
+        elif padron.imp_iva == 'EX':
+            cat_iva = 4  # EX
+        elif padron.monotributo:
+            cat_iva = 6  # MT
+        else:
+            cat_iva = 5  # CF
+        padron.ConsultarDomicilios(doc_nro, tipo_doc)
+        # tomar el primer domicilio o consultar con la API de AFIP:
+        for domicilio in padron.domicilios:
+            panel['cliente']['domicilio'].value = domicilio
+            break
+        else:
+            if doc_nro and padron.Consultar(doc_nro) and padron.domicilios:
+                panel['cliente']['domicilio'].value = padron.domicilios[0]
+        panel['cliente']['email'].value = padron.email or ""
     else:
         panel['cliente']['nombre'].value = ""
         panel['cliente']['domicilio'].value = ""
@@ -120,7 +124,7 @@ def on_tipo_cbte_change(evt):
         tipo_cbte = panel['tipo_cbte'].value
         pto_vta = panel['pto_vta'].value = pto_vta_emisor         
         if tipo_cbte and pto_vta:
-            statusbar.text = 'Consultando Ulitma Comprobante Autorizado...'
+            statusbar.text = 'Consultando Ultimo Comprobante Autorizado...'
             nro_cbte = wsfev1.CompUltimoAutorizado(tipo_cbte, pto_vta)
             print wsfev1.Excepcion, wsfev1.ErrMsg            
         else:
@@ -185,8 +189,7 @@ def on_grid_cell_change(evt):
     recalcular()
 
 def on_agregar_click(evt):
-    #grilla.items.append({'qty': 1, 'precio': 0., 'iva_id': 5})
-    grilla.items.append([1,0.,'',0.,5])
+    grilla.items.append({'qty': 1, 'precio': 0., 'iva_id': 3})
     
 def on_borrar_click(evt):
     if grilla.items:
@@ -477,9 +480,9 @@ def grabar(evt):
     direccion = panel['cliente']['domicilio'].value
     cat_iva =  panel['cliente']['cat_iva'].value or None
     email = panel['cliente']['email'].value
-    if not all([tipo_doc, nro_doc, denominacion]):
+    if not all([tipo_doc, nro_doc]):
         gui.alert(u"Información del cliente incompleta", "Imposible Guardar")
-    elif not grilla.items:
+    elif not grilla.items:    
         gui.alert(u"No ingresó artículos", "Imposible Guardar")
     elif panel['imp_total'].value == 0 and not gui.confirm(u"¿Importe 0?", "Confirmar Guardar"):
         pass
@@ -750,7 +753,7 @@ gui.ListView(name='listado', height='100',
                   left='15', top='34', width='357', item_count=0, 
                   sort_column=1, parent='alicuotas_iva')
 gui.ListColumn(name=u'iva_id', text=u'ID', width=40, 
-               represent=lambda x: {3: "0%", 4: "10.5%", 
+               represent=lambda x: {1: "0%",2: "0%",3: "0%", 4: "10.5%", 
                                     5: "21%", 6: "27%"}[x], parent='listado')
 gui.ListColumn(name=u'alicuota', text=u'Al\xedcuota', 
                align="right", width=75, represent="%.2f", parent='listado')
@@ -884,7 +887,7 @@ if '--prueba' in sys.argv:
     grilla.items.append({'qty': 1, 'codigo': '1111', 
     'ds': u"Honorarios  p/administración  de alquileres", 'precio': 1000., 
     'iva_id': 5, 'subtotal': 1210.})
-
+        
 if __name__ == "__main__":
     try:
         if len(sys.argv)>1 and not sys.argv[1].startswith("-"):
@@ -956,6 +959,7 @@ if __name__ == "__main__":
             wsfev1.SetTicketAcceso(ta)
         wsfev1.Cuit = cuit_emisor
         wsfev1.Conectar("cache", wsfev1_url)
+        statusbar.text = 'Autenticado con AFIP'
         fepdf = FEPDF()
         # cargo el formato CSV por defecto (factura.csv)
         fepdf.CargarFormato(conf_fact.get("formato", "factura.csv"))
@@ -974,6 +978,11 @@ if __name__ == "__main__":
                                     for k,v in config.items('ARTICULOS')])
         grilla.columns[2].choices = datos.articulos.values()
         limpiar(None)
+
+        if '--test' in sys.argv:
+            print "Corriendo en Modo Testing"
+            panel['cliente']['tipo_doc'].value = 80
+            panel['cliente']['nro_doc'].value = "20-29855227-3"
 
         mywin.show()
         gui.main_loop()
