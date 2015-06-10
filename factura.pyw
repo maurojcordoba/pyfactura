@@ -8,7 +8,7 @@ from __future__ import with_statement   # for python 2.5 compatibility
 __author__ = "Mariano Reingart (reingart@gmail.com)"
 __copyright__ = "Copyright (C) 2014- Mariano Reingart"
 __license__ = "LGPL 3.0"
-__version__ = "0.8a"
+__version__ = "0.9a"
 
 # Documentación: http://www.sistemasagiles.com.ar/trac/wiki/PyFactura
 
@@ -109,7 +109,7 @@ def on_nro_doc_change(evt):
 def on_cat_iva_change(evt):
     ctrl = evt.target
     panel = ctrl.get_parent().get_parent()
-    cat_iva = ctrl.value
+    cat_iva = ctrl.value    
     if cat_iva_emisor == 1:
         if cat_iva == 1:
             tipo_cbte = 1  # factura A
@@ -193,7 +193,7 @@ def on_grid_cell_change(evt):
     recalcular()
 
 def on_agregar_click(evt):
-    grilla.items.append({'qty': 1, 'precio': 0., 'iva_id': 3})
+    grilla.items.append({'qty': 1, 'precio': 0., 'iva_id': 5})
     
 def on_borrar_click(evt):
     if grilla.items:
@@ -284,7 +284,8 @@ def obtener_cae(evt):
         importe = 1
         wsfev1.AgregarTributo(id, desc, base_imp, alic, importe)
         
-    if concepto == 2 or concepto == 3:
+    #Para comprobantes tipo C y Bienes Usados – Emisor Monotributista no debe informar el array    
+    if tipo_cbte not in (11,12,13,15):
         listado = panel['notebook']['alicuotas_iva']['listado']
         for it in listado.items:
             iva_id = it['iva_id']
@@ -569,6 +570,8 @@ def cargar_factura(f):
         panel['aut']['enviar'].enabled = True
 
 def enviar(evt):
+    gui.alert("Opción temporalmente deshabilitada","Enviar", icon="info")
+    return False
     tipo_cbte = panel['tipo_cbte'].value
     punto_vta = panel['pto_vta'].value
     cbte_nro = panel['nro_cbte'].value
@@ -673,7 +676,7 @@ gui.Label(name='label_356_21_178', height='17', left='290',
           top='130', width='20', text=u'N\xb0:', parent='mywin.panel')
 gui.TextBox(mask='##', name=u'pto_vta', alignment='right', 
             left='318', top='125', width='47', 
-            value=99, parent='mywin.panel')
+            value=1, parent='mywin.panel')
 gui.TextBox(mask='########', name=u'nro_cbte', alignment='right', 
             left='366', top='125', width='92', 
             value=12345678, parent='mywin.panel')
@@ -687,9 +690,9 @@ gui.Panel(label=u'Conceptos a incluir', name='conceptos',
                        height='89', left='8', top='157', width='265', 
                        image='', parent='mywin.panel')
 gui.CheckBox(label=u'Productos', name='productos', left='13', 
-             top='24', width='99', value=True, parent='conceptos')
+             top='24', width='99', parent='conceptos')
 gui.CheckBox(label=u'Servicios', name='servicios', left='132', 
-             top='24', width='110', parent='conceptos')
+             top='24', width='110', value=True, parent='conceptos')
 gui.Label(name='label_182_163', height='25', left='11', 
           top='55', width='42', text=u'Forma Pago:', parent='conceptos')
 gui.ComboBox(name='forma_pago', value=u'Contado', 
@@ -731,7 +734,7 @@ gui.GridColumn(align='right', name='qty', type='double',
                text=u'Cant.', width=50, parent='items')
 gui.GridColumn(name=u'codigo', represent='%s', type='text', 
                text=u'C\xf3digo', width=75, parent='items')
-gui.GridColumn(name=u'ds', represent='%s', type='choice', 
+gui.GridColumn(name=u'ds', represent='%s', type='text', 
                text=u'Descripci\xf3n', width=275, parent='items')
 gui.GridColumn(align='right', name=u'precio', type='double', 
                format="11,2", represent=u'%0.2f', text=u'Precio', 
